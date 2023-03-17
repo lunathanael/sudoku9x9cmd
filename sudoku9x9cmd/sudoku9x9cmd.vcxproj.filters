@@ -21,7 +21,7 @@
     <ClCompile Include="sudoku9x9cmd.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="x64\findSudoku.cpp">
+    <ClCompile Include="findSudoku.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

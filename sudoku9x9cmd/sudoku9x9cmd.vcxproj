@@ -128,8 +128,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="chatsolve.cpp" />
+    <ClCompile Include="findSudoku.cpp" />
     <ClCompile Include="sudoku9x9cmd.cpp" />
-    <ClCompile Include="x64\findSudoku.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
