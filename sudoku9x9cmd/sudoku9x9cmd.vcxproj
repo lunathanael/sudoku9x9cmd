@@ -131,6 +131,9 @@
     <ClCompile Include="findSudoku.cpp" />
     <ClCompile Include="sudoku9x9cmd.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="Solutions.txt" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

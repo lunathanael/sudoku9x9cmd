@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <chrono>
 #include <thread>
+#include <fstream>
 
 using namespace std;
 
@@ -10,17 +11,17 @@ using namespace std;
 // UI definitions
 const double framespeed{ 1 };// Seconds per frame.
 const int runTime{0}; // Runtime in seconds, leave blank for infinite.
-int branch{};
-int number{};
+static int branch{};
+static int number{};
 std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end;
 
 
 const int n = 9;
-int grid[n][n]{};
-short solution{};
+static short grid[n][n]{};
+static short solution{};
 const short clues = 17; // number of clues
 const short blanks{ 82 - clues };
-short depth = 0;
+
 
 
 
@@ -53,7 +54,10 @@ void updateFrame(int frameTime)
         cout.flush();
 
         // For testing ONLY
-        system("pause");
+        //system("pause");
+
+
+
     }
     exit(EXIT_SUCCESS);
 }
@@ -62,8 +66,6 @@ void updateFrame(int frameTime)
 // function to check if a value can be placed in a particular position in the grid
 bool issafe(short row, short col, short num)
 {
-    short subrow = (row / 3) * 3;
-    short subcol = (col / 3) * 3;
 
         // check if the same number exists in the same row or column
         for (short i = 0; i < 9; ++i) {
@@ -71,6 +73,9 @@ bool issafe(short row, short col, short num)
                 return false;
             }
         }
+
+        int subrow = (row / 3) * 3;
+        int subcol = (col / 3) * 3;
 
         // check if the same number exists in the same 3x3 subgrid
         for (short i = subrow; i < subrow + 3; ++i) {
@@ -88,7 +93,6 @@ bool issafe(short row, short col, short num)
 // function to solve the sudoku puzzle
 bool solvesudoku(short row, short col)
 {
-    ++depth;
 
     // find the first unassigned cell in the grid
     bool isempty = false;
@@ -106,7 +110,6 @@ bool solvesudoku(short row, short col)
     // if no unassigned cell is found, the puzzle is solved
     if (!isempty)
     {
-        --depth;
         return true;
     }
 
@@ -123,7 +126,6 @@ bool solvesudoku(short row, short col)
             if (solvesudoku(row, col))
             {
                 if (solution > 0) {
-                    --depth;
                     solution = 2;
                     grid[row][col] = 0;
                     return true;
@@ -139,30 +141,44 @@ bool solvesudoku(short row, short col)
     }
 
     // if no number can be placed in the current cell, backtrack
-    --depth;
     return false;
 }
 
 
-short randomizegrid(short index, short prev) {
-    if (index == clues) {
+void randomizegrid(short cluesLeft, short prev) {
+    if (cluesLeft == 0) {
         solution = 0;
         solvesudoku(0, 0);
         if (solution == 1) {
             ++number;
-            printsudoku();
+
+            ofstream file;
+            file.open("Solutions.txt");
+            for (short i = 0; i < 9; ++i)
+            {
+                for (short j = 0; j < 9; ++j)
+                {
+                    file << grid[i][j] << " ";
+                }
+                file << endl;
+            }
+            file << endl;
+            file.close();
+
+            solution = 0;
         }
-        return --index;
+        return;
     }
     short viable{};
 
-    for (short i = prev; i < blanks + index; ++i) {
+    for (short i = prev; i <= 81 - cluesLeft; ++i) {
         ++branch;
         for (short numb = 1; numb < 10; ++numb) {
+            // ISSUE: issafe function not correct or grid square not correctly being reset.
+
             if (issafe(i / 9, i % 9, numb)) {
                 grid[i / 9][i % 9] = numb;
-                ++index;
-                index = randomizegrid(index, i + 1);
+                randomizegrid(cluesLeft - 1, i+1);
                 grid[i / 9][i % 9] = 0;
             } else {
                 ++viable;
@@ -171,10 +187,10 @@ short randomizegrid(short index, short prev) {
         
         
         if (viable == 9 && solution != 0) {
-            return --index;
+            solution = 0;
+            return;
         }
     }
-    return --index;
 }
 
 
@@ -185,7 +201,7 @@ int main()
     t_start = std::chrono::high_resolution_clock::now();
     thread t1(updateFrame, framespeed);
 
-    randomizegrid(0, 0);
+    randomizegrid(17, 0);
 
     t_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elasec = t_end - t_start;
