@@ -7,10 +7,9 @@
 using namespace std;
 
 
-
 // UI definitions
 const double framespeed{ 1 };// Seconds per frame.
-const int runTime{10}; // Runtime in seconds, leave blank for infinite.
+const int runTime{0}; // Runtime in seconds, leave blank for infinite.
 int branch{};
 int number{};
 std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end;
@@ -38,6 +37,7 @@ void printsudoku()
         }
 }
 
+
 void updateFrame(int frameTime)
 {
     for (int i = 0; runTime == 0 || i < runTime / framespeed; ++i) {
@@ -45,13 +45,17 @@ void updateFrame(int frameTime)
         system("cls");
         printsudoku();
 
-        cout << "Runtime: " << fixed << std::setprecision(5) << (i + 1) * framespeed << " s\n";
+        cout << "Runtime: " << fixed << std::setprecision(3) << (i + 1) * framespeed << " s\n";
         cout << "Branches: " << branch << ", bps: " << branch / (i + 1) / framespeed << endl;
 
         cout << "Solutions: " << number;
         cout << " , nps: " << number / (i + 1) / framespeed << endl;
         cout.flush();
+
+        // For testing ONLY
+        system("pause");
     }
+    exit(EXIT_SUCCESS);
 }
 
 
@@ -128,6 +132,8 @@ bool solvesudoku(short row, short col)
             }
 
             // if the puzzle cannot be solved with the current assignment, backtrack
+
+            //NOT CORRECTLY DELETING ALL ENTRIED
             grid[row][col] = 0;
         }
     }
@@ -138,7 +144,7 @@ bool solvesudoku(short row, short col)
 }
 
 
-short randomizegrid(short index) {
+short randomizegrid(short index, short prev) {
     if (index == clues) {
         solution = 0;
         solvesudoku(0, 0);
@@ -150,25 +156,21 @@ short randomizegrid(short index) {
     }
     short viable{};
 
-    if (number >= 1 || branch >= 1'000'000) { return --index; }
-    for (short i = index; i < blanks + index; ++i) {
+    for (short i = prev; i < blanks + index; ++i) {
         ++branch;
-        if (grid[i / 9][i % 9] == 0) {
-            for (short numb = 1; numb < 10; ++numb) {
-                if (issafe(i / 9, i % 9, numb)) {
-                    grid[i / 9][i % 9] = numb;
-                    ++index;
-                    index = randomizegrid(index);
-                    grid[i / 9][i % 9] = 0;
-                } else {
-                    ++viable;
-                }
+        for (short numb = 1; numb < 10; ++numb) {
+            if (issafe(i / 9, i % 9, numb)) {
+                grid[i / 9][i % 9] = numb;
+                ++index;
+                index = randomizegrid(index, i + 1);
+                grid[i / 9][i % 9] = 0;
+            } else {
+                ++viable;
             }
         }
         
-        // Needs Rework, works to eliminate no possible number but ignore impossible nonzero solutions.
+        
         if (viable == 9 && solution != 0) {
-
             return --index;
         }
     }
@@ -179,10 +181,11 @@ short randomizegrid(short index) {
 // main function
 int main()
 {
+
     t_start = std::chrono::high_resolution_clock::now();
     thread t1(updateFrame, framespeed);
 
-    randomizegrid(0);
+    randomizegrid(0, 0);
 
     t_end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elasec = t_end - t_start;
