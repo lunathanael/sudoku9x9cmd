@@ -1,59 +1,76 @@
 #include <iostream>
 #include <string>
 #include <iomanip>
+#include <chrono>
+#include <thread>
+
 using namespace std;
 
-int branch = 0;
-const int n = 9;
-int grid[n][n] = {};
-int solgrid[n][n] = {};
-int number = 0;
-int solution;
-int clues = 17; // number of clues
 
-int depth = 0;
-w
+
+// UI definitions
+const double framespeed{ 1 };// Seconds per frame.
+const int runTime{10}; // Runtime in seconds, leave blank for infinite.
+int branch{};
+int number{};
+std::chrono::time_point<std::chrono::high_resolution_clock> t_start, t_end;
+
+
+const int n = 9;
+int grid[n][n]{};
+short solution{};
+const short clues = 17; // number of clues
+const short blanks{ 82 - clues };
+short depth = 0;
+
+
 
 // function to print the solved sudoku puzzle
-void printsudoku(int identifier)
+void printsudoku()
 {
-    switch (identifier) {
-    case 0:
-        for (int i = 0; i < 9; ++i)
+        for (short i = 0; i < 9; ++i)
         {
-            for (int j = 0; j < 9; ++j)
+            for (short j = 0; j < 9; ++j)
+            {
                 cout << grid[i][j] << " ";
+            }
             cout << endl;
         }
-        break;
-    case 1:
-        for (int i = 0; i < 9; ++i)
-        {
-            for (int j = 0; j < 9; ++j)
-                cout << solgrid[i][j] << " ";
-            cout << endl;
-        }
-        break;
+}
+
+void updateFrame(int frameTime)
+{
+    for (int i = 0; runTime == 0 || i < runTime / framespeed; ++i) {
+        std::this_thread::sleep_for(std::chrono::seconds(frameTime));
+        system("cls");
+        printsudoku();
+
+        cout << "Runtime: " << fixed << std::setprecision(5) << (i + 1) * framespeed << " s\n";
+        cout << "Branches: " << branch << ", bps: " << branch / (i + 1) / framespeed << endl;
+
+        cout << "Solutions: " << number;
+        cout << " , nps: " << number / (i + 1) / framespeed << endl;
+        cout.flush();
     }
 }
 
 
 // function to check if a value can be placed in a particular position in the grid
-bool issafe(int row, int col, int num)
+bool issafe(short row, short col, short num)
 {
-    int subrow = (row / 3) * 3;
-    int subcol = (col / 3) * 3;
+    short subrow = (row / 3) * 3;
+    short subcol = (col / 3) * 3;
 
         // check if the same number exists in the same row or column
-        for (int i = 0; i < n; ++i) {
+        for (short i = 0; i < 9; ++i) {
             if (grid[row][i] == num || grid[i][col] == num) {
                 return false;
             }
         }
 
         // check if the same number exists in the same 3x3 subgrid
-        for (int i = subrow; i < subrow + 3; ++i) {
-            for (int j = subcol; j < subcol + 3; ++j) {
+        for (short i = subrow; i < subrow + 3; ++i) {
+            for (short j = subcol; j < subcol + 3; ++j) {
                 if (grid[i][j] == num) {
                     return false;
                 }
@@ -65,14 +82,14 @@ bool issafe(int row, int col, int num)
 }
 
 // function to solve the sudoku puzzle
-bool solvesudoku()
+bool solvesudoku(short row, short col)
 {
-    depth++;
+    ++depth;
+
     // find the first unassigned cell in the grid
-    int row = -1, col = -1;
     bool isempty = false;
-    for (int i = 0; i < n && !isempty; ++i) {
-        for (int j = 0; j < n && !isempty; ++j) {
+    for (short i = row; i < 9 && !isempty; ++i) {
+        for (short j = col; j < 9 && !isempty; ++j) {
             if (grid[i][j] == 0)
             {
                 row = i;
@@ -85,25 +102,24 @@ bool solvesudoku()
     // if no unassigned cell is found, the puzzle is solved
     if (!isempty)
     {
-        depth--;
+        --depth;
         return true;
     }
 
 
     // try different numbers in the current cell
-    for (int num = 1; num <= n; ++num)
+    for (short num = 1; num <= 9; ++num)
     {
         if (issafe(row, col, num))
         {
             // if the number is safe, assign it to the current cell
             grid[row][col] = num;
-            ++branch;
 
             // recursively solve the puzzle
-            if (solvesudoku())
+            if (solvesudoku(row, col))
             {
                 if (solution > 0) {
-                    depth--;
+                    --depth;
                     solution = 2;
                     grid[row][col] = 0;
                     return true;
@@ -117,68 +133,66 @@ bool solvesudoku()
     }
 
     // if no number can be placed in the current cell, backtrack
-    depth--;
+    --depth;
     return false;
 }
 
 
-int randomizegrid(int index) {
-    if (number == 1) { index--; return index; }
-    for (int i = index; i < 82 - clues + index; ++i) {
-        if (index < clues) {
-            if (grid[i / 9][i % 9] == 0) {
-                for (int numb = 1; numb < 10; ++numb) {
-                    if (issafe(i / 9, i % 9, numb)) {
-                        grid[i / 9][i % 9] = numb;
-                        ++index;
-                        index = randomizegrid(index);                       
-                        grid[i / 9][i % 9] = 0;
-                    }
+short randomizegrid(short index) {
+    if (index == clues) {
+        solution = 0;
+        solvesudoku(0, 0);
+        if (solution == 1) {
+            ++number;
+            printsudoku();
+        }
+        return --index;
+    }
+    short viable{};
+
+    if (number >= 1 || branch >= 1'000'000) { return --index; }
+    for (short i = index; i < blanks + index; ++i) {
+        ++branch;
+        if (grid[i / 9][i % 9] == 0) {
+            for (short numb = 1; numb < 10; ++numb) {
+                if (issafe(i / 9, i % 9, numb)) {
+                    grid[i / 9][i % 9] = numb;
+                    ++index;
+                    index = randomizegrid(index);
+                    grid[i / 9][i % 9] = 0;
+                } else {
+                    ++viable;
                 }
             }
         }
-        else {
-            solution = 0;
-            if (solvesudoku()) {
+        
+        // Needs Rework, works to eliminate no possible number but ignore impossible nonzero solutions.
+        if (viable == 9 && solution != 0) {
 
-            }
-            if (solution == 1) {
-                ++number;
-                printsudoku(0);
-            } else if (branch >= 100000000) {
-                printsudoku(0);
-                branch = 0;
-            }
-            index--;
-            return index;
+            return --index;
         }
     }
-    index--;
-    return index;
+    return --index;
 }
 
-
-void endclock(double time_taken) {
-    cout << "runtime : " << fixed
-        << time_taken << std::setprecision(5);
-    if (time_taken == 0) {
-        time_taken = 1;
-    }
-    cout << " seconds" << endl << "branches: " << branch << ", bps: " << branch / time_taken << endl;
-}
 
 // main function
 int main()
 {
-    time_t start, end;
-    time(&start);
+    t_start = std::chrono::high_resolution_clock::now();
+    thread t1(updateFrame, framespeed);
 
     randomizegrid(0);
-    time(&end);
-    double time_taken = double(end - start);
-    endclock(time_taken);
-    cout << "solutions: " << number;
-    cout << " , nps: " << number / time_taken << endl;
+
+    t_end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elasec = t_end - t_start;
+    auto elapsed_seconds{ elasec.count() };
+
+    cout << "Runtime: " << fixed << std::setprecision(5) << elasec.count() << " s\n";
+    cout << "Branches: " << branch << ", bps: " << branch / elapsed_seconds << endl;
+
+    cout << "Solutions: " << number;
+    cout << " , nps: " << number / elapsed_seconds << endl;
 
 
     return 0;
